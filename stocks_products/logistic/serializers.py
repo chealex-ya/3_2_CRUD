@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from logistic.models import Product, Stock, StockProduct
+from drf_writable_nested import WritableNestedModelSerializer
 
 
 class ProductSerializer(serializers.ModelSerializer):
@@ -9,12 +10,13 @@ class ProductSerializer(serializers.ModelSerializer):
 
 
 class ProductPositionSerializer(serializers.ModelSerializer):
+
     class Meta:
         model = StockProduct
-        fields = ['product', 'stock', 'quantity', 'price']
+        fields = ['product', 'quantity', 'price']
 
 
-class StockSerializer(serializers.ModelSerializer):
+class StockSerializer(WritableNestedModelSerializer, serializers.ModelSerializer):
     positions = ProductPositionSerializer(many=True)
 
     class Meta:
@@ -22,13 +24,22 @@ class StockSerializer(serializers.ModelSerializer):
         fields = ['id', 'address', 'positions']
 
     def create(self, validated_data):
+
         positions = validated_data.pop('positions')
         stock = super().create(validated_data)
-        StockProduct.objects.create(**positions[0])
+
+        for position in positions:
+            position['stock_id'] = stock.pk
+            StockProduct.objects.create(**position)
+
         return stock
 
     def update(self, instance, validated_data):
         positions = validated_data.pop('positions')
         stock = super().update(instance, validated_data)
-        StockProduct.objects.update(**positions[0])
+
+        for position in positions:
+            position['stock_id'] = stock.pk
+            StockProduct.objects.update(**position)
+
         return stock
