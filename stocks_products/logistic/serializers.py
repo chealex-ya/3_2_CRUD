@@ -16,7 +16,7 @@ class ProductPositionSerializer(serializers.ModelSerializer):
         fields = ['product', 'quantity', 'price']
 
 
-class StockSerializer(WritableNestedModelSerializer, serializers.ModelSerializer):
+class StockSerializer(serializers.ModelSerializer):
     positions = ProductPositionSerializer(many=True)
 
     class Meta:
@@ -39,7 +39,6 @@ class StockSerializer(WritableNestedModelSerializer, serializers.ModelSerializer
         stock = super().update(instance, validated_data)
 
         for position in positions:
-            position['stock_id'] = stock.pk
-            StockProduct.objects.update(**position)
+            StockProduct.objects.update_or_create(stock=stock, product=position['product'], quantity=position['quantity'], price=position['price'])
 
         return stock
